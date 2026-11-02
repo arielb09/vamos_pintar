@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Paleta de pintura sonriente">
+<rect width="512" height="512" fill="#f7f7f7"/>
+<path d="M251 61c-112 0-202 87-202 191 0 112 88 199 204 199 103 0 191-76 204-173 4-31-1-69-12-88-10-17-25-22-45-18-37 7-74-12-88-44-8-17-9-36-4-54 6-23-7-44-29-50-9-3-18-5-28-6z" fill="#f9ae70" stroke="#252525" stroke-width="10" stroke-linejoin="round"/>
+<path d="M299 151c7 20 22 34 42 42" fill="none" stroke="#252525" stroke-width="9" stroke-linecap="round"/>
+<circle cx="219" cy="126" r="31" fill="#ffcc4d" stroke="#252525" stroke-width="9"/>
+<circle cx="148" cy="180" r="29" fill="#ff6468" stroke="#252525" stroke-width="9"/>
+<circle cx="137" cy="267" r="30" fill="#18c49c" stroke="#252525" stroke-width="9"/>
+<circle cx="193" cy="362" r="29" fill="#4e9af5" stroke="#252525" stroke-width="9"/>
+<circle cx="281" cy="376" r="29" fill="#08c7c6" stroke="#252525" stroke-width="9"/>
+<circle cx="359" cy="293" r="29" fill="#ed8ee9" stroke="#252525" stroke-width="9"/>
+<circle cx="221" cy="229" r="8" fill="#252525"/><circle cx="276" cy="229" r="8" fill="#252525"/>
+<path d="M240 260q9 7 18 0" fill="none" stroke="#252525" stroke-width="7" stroke-linecap="round"/>
+</svg>
