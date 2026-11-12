@@ -1,9 +1,6 @@
-// Service worker: cache-first, funciona 100% offline tras la primera carga.
-// Para publicar cambios, sube la versión (pintar-v2, pintar-v3...).
-const CACHE = 'pintar-v1';
+const CACHE = 'pintar-v2';
 
-// Si agregas audios offline en CLIPS, inclúyelos aquí.
-const FILES = [
+const ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
@@ -12,26 +9,36 @@ const FILES = [
   './icon-512.png'
 ];
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting())
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE)
+      .then(cache => cache.addAll(ASSETS))
+      .then(() => self.skipWaiting())
   );
 });
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
+self.addEventListener('activate', event => {
+  event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then(keys => Promise.all(
+        keys.filter(key => key !== CACHE).map(key => caches.delete(key))
+      ))
       .then(() => self.clients.claim())
   );
 });
 
-self.addEventListener('fetch', (e) => {
-  if (e.request.method !== 'GET') return;
-  e.respondWith(
-    caches.match(e.request, { ignoreSearch: true }).then((hit) => {
-      if (hit) return hit;
-      return fetch(e.request).catch(() => caches.match('./index.html'));
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+
+  event.respondWith(
+    caches.match(event.request, { ignoreSearch: true }).then(cached => {
+      if (cached) return cached;
+
+      return fetch(event.request).then(response => {
+        const copy = response.clone();
+        caches.open(CACHE).then(cache => cache.put(event.request, copy));
+        return response;
+      }).catch(() => caches.match('./index.html'));
     })
   );
 });
