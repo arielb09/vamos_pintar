@@ -1,8 +1,9 @@
-const CACHE = 'pintar-v2';
+const CACHE = 'pintar-v3';
 
 const ASSETS = [
   './',
   './index.html',
+  './v3-camera-gallery-patch.js',
   './manifest.webmanifest',
   './icon.svg',
   './icon-192.png',
