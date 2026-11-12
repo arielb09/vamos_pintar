@@ -9,30 +9,28 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>Pintar</title>
+<title>Vamos a Pintar</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 html,body{margin:0;height:100%;overflow:hidden;background:#f4f1ea;touch-action:none;overscroll-behavior:none;font-family:system-ui,sans-serif}
 [hidden]{display:none!important}
 button{font:inherit;border:0;cursor:pointer;touch-action:manipulation;padding:0}
 .screen{position:fixed;inset:0;display:none}
-.screen.on{display:flex;animation:in .25s ease-out}
-@keyframes in{from{opacity:0}to{opacity:1}}
+.screen.on{display:flex}
 svg.i{width:58%;height:58%;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
 .btn{width:88px;height:88px;flex:none;border-radius:26px;background:#fff;color:#37474f;box-shadow:0 4px 0 #cfc8b8;display:grid;place-items:center;transition:transform .12s}
 .btn:active{transform:scale(.94)}
 .btn.sel{background:#ffe08a;color:#1a237e;box-shadow:0 0 0 6px #1e88e5;transform:scale(1.06)}
 
 /* PANTALLA INICIAL */
-#splash{flex-direction:column;align-items:center;justify-content:center;gap:5vh;background:#fff7e0}
-#sName,#sSub{display:flex;font-weight:900;font-family:"Arial Rounded MT Bold",system-ui,sans-serif;line-height:1}
-#sName{font-size:min(24vh,17vw);gap:.03em}
-#sSub{font-size:min(9vh,6.5vw);gap:.04em}
-.ch{display:inline-block;text-shadow:0 .06em 0 rgba(0,0,0,.18);animation:bob 1.6s ease-in-out infinite}
-@keyframes bob{50%{transform:translateY(-.12em)}}
-#sPlay{width:130px;height:130px;border-radius:50%;background:#43a047;color:#fff;box-shadow:0 8px 0 #2e7d32;display:grid;place-items:center;animation:pulse 1.2s ease-in-out infinite}
+#splash{flex-direction:column;align-items:center;justify-content:center;gap:4vh;background:#fff7e0}
+#sTitle{display:flex;flex-direction:column;align-items:center;gap:1vh;font-weight:900;line-height:1}
+#sName{font-size:min(20vh,15vw);letter-spacing:.04em;display:flex}
+#sSub{font-size:min(8vh,5.8vw);letter-spacing:.03em;display:flex}
+.ch{display:inline-block}
+#sPlay{width:120px;height:120px;border-radius:50%;background:#43a047;color:#fff;box-shadow:0 8px 0 #2e7d32;display:grid;place-items:center;transition:transform .15s}
+#sPlay:active{transform:scale(.92)}
 #sPlay svg{fill:currentColor;stroke:none}
-@keyframes pulse{50%{transform:scale(1.1)}}
 
 /* HOME */
 #home{flex-direction:column;padding:24px 24px 128px}
@@ -49,10 +47,14 @@ svg.i{width:58%;height:58%;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 /* PINTURA */
 #paint{align-items:center;justify-content:center;gap:28px;padding:20px}
 #left{height:100%;display:flex;flex-direction:column;align-items:center;gap:14px}
-#pal{flex:1;min-height:0;width:112px;overflow-y:auto;display:flex;flex-direction:column;align-items:center;gap:18px;padding:12px 0;touch-action:pan-y;scrollbar-width:none;overscroll-behavior:contain}
+
+/* Paleta como carrusel infinito vertical */
+#pal{flex:1;min-height:0;width:112px;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:8px 0;touch-action:pan-y;scrollbar-width:none;overscroll-behavior:contain}
 #pal::-webkit-scrollbar{display:none}
+.pal-track{display:flex;flex-direction:column;align-items:center;gap:18px;width:100%}
 .sw{width:76px;height:76px;flex:none;border-radius:50%;border:5px solid #fff;box-shadow:0 0 0 3px rgba(0,0,0,.18);transition:transform .12s}
 .sw.sel{box-shadow:0 0 0 7px #263238;transform:scale(1.12)}
+
 #stage{--s:min(calc(100vh - 40px),calc(100vw - 330px));position:relative;width:var(--s);height:var(--s);background:#fff;border-radius:36px;overflow:hidden;box-shadow:0 8px 0 #cfc8b8;touch-action:none}
 #stage canvas,#outline{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #outline svg{width:100%;height:100%}
@@ -72,21 +74,26 @@ svg.i{width:58%;height:58%;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 </head>
 <body>
 
+<!-- PANTALLA INICIAL -->
 <section id="splash" class="screen on">
-  <div id="sName"></div>
-  <div id="sSub"></div>
-  <div id="sPlay" data-i="play"></div>
+  <div id="sTitle">
+    <div id="sName"></div>
+    <div id="sSub"></div>
+  </div>
+  <button id="sPlay" class="btn" data-i="play"></button>
 </section>
 
+<!-- HOME -->
 <section id="home" class="screen">
   <div id="grid"></div>
   <button id="lock" data-i="lock"><svg class="ring" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44"/></svg></button>
 </section>
 
+<!-- PINTURA -->
 <section id="paint" class="screen">
   <div id="left">
     <button id="bHome" class="btn" data-i="home"></button>
-    <div id="pal"></div>
+    <div id="pal"><div class="pal-track" id="palTrack"></div></div>
   </div>
   <div id="stage"><div id="outline"></div></div>
   <div id="right">
@@ -101,7 +108,7 @@ svg.i{width:58%;height:58%;fill:none;stroke:currentColor;stroke-width:2;stroke-l
   </div>
 </section>
 
-<!-- Panel de control parental: se abre con el candado (3 s) -->
+<!-- PANEL ADULTOS -->
 <section id="parent" class="screen">
   <div class="panel">
     <div class="row"><div class="lbl">Herramientas</div>
@@ -138,19 +145,19 @@ const IC = {
 document.querySelectorAll('[data-i]').forEach(e => e.insertAdjacentHTML('afterbegin', `<svg class="i" viewBox="0 0 24 24">${IC[e.dataset.i]}</svg>`));
 document.querySelectorAll('[data-ic]').forEach(e => e.innerHTML = IC[e.dataset.ic]);
 
-/* ---------- Ajustes parentales (se guardan solo en este dispositivo) ---------- */
+/* ---------- Ajustes parentales ---------- */
 const set = {balde:true, brocha:true, modo:'dibujo', musica:false};
 try { Object.assign(set, JSON.parse(localStorage.getItem('pintar-ajustes') || '{}')); } catch(e){}
 const saveSet = () => { try { localStorage.setItem('pintar-ajustes', JSON.stringify(set)); } catch(e){} };
 
-/* ---------- Dibujos: viewBox 400x400, regiones cerradas independientes ---------- */
+/* ---------- 16 Dibujos con formas cerradas simples ---------- */
 const circ = (x,y,r) => `M${x-r} ${y}a${r} ${r} 0 1 0 ${2*r} 0a${r} ${r} 0 1 0 ${-2*r} 0z`;
 const ell  = (x,y,a,b) => `M${x-a} ${y}a${a} ${b} 0 1 0 ${2*a} 0a${a} ${b} 0 1 0 ${-2*a} 0z`;
 const pt   = (x,y,r,deg) => [x + r*Math.cos(deg*Math.PI/180), y + r*Math.sin(deg*Math.PI/180)];
 const poly = p => 'M' + p.map(q => q.map(v => v.toFixed(1)).join(' ')).join('L') + 'Z';
 const rays = [...Array(8)].map((_,i) => poly([pt(200,200,78,i*45-13), pt(200,200,160,i*45), pt(200,200,78,i*45+13)]));
 const SO = i => pt(200,215,165,-90+72*i), SI = i => pt(200,215,65,-54+72*i);
-const ball = (x,y,r) => [   // pelota de 4 sectores
+const ball = (x,y,r) => [
   `M${x} ${y}L${x} ${y-r}A${r} ${r} 0 0 0 ${x-r} ${y}Z`, `M${x} ${y}L${x+r} ${y}A${r} ${r} 0 0 0 ${x} ${y-r}Z`,
   `M${x} ${y}L${x} ${y+r}A${r} ${r} 0 0 0 ${x+r} ${y}Z`, `M${x} ${y}L${x-r} ${y}A${r} ${r} 0 0 0 ${x} ${y+r}Z`];
 
@@ -220,30 +227,47 @@ const DR = [
 ];
 const outlineSVG = d => `<svg viewBox="0 0 400 400"><g fill="none" stroke="#2f3a40" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">${d.r.map(x => `<path d="${x}"/>`).join('')}</g></svg>`;
 
-/* 12 colores. La columna tiene scroll, así que ampliar la lista no requiere cambiar la interfaz */
-const PAL = [['rojo','#e53935'],['naranja','#fb8c00'],['amarillo','#fdd835'],['verde claro','#9ccc65'],
-             ['verde','#2e9e4f'],['celeste','#4fc3f7'],['azul','#1e88e5'],['morado','#8e24aa'],
-             ['rosa','#f06292'],['café','#8d5a3b'],['gris','#9e9e9e'],['negro','#263238']];
+/* 12 colores */
+const PAL = [
+  ['rojo','#e53935'],['naranja','#fb8c00'],['amarillo','#fdd835'],['verde claro','#9ccc65'],
+  ['verde','#2e9e4f'],['celeste','#4fc3f7'],['azul','#1e88e5'],['morado','#8e24aa'],
+  ['rosa','#f06292'],['café','#8d5a3b'],['gris','#9e9e9e'],['negro','#263238']
+];
 
-/* ---------- Audio (todo falla en silencio) ---------- */
-/* Voz offline garantizada: CLIPS['rojo'] = 'data:audio/mp3;base64,...' (o una ruta 'audio/rojo.mp3' añadida a FILES en sw.js).
-   Si no hay clip, se usa speechSynthesis. */
+/* ---------- Audio y voz ---------- */
 const CLIPS = {};
-const say = t => { try {
-  if (CLIPS[t]) { new Audio(CLIPS[t]).play().catch(()=>{}); return; }
-  const s = speechSynthesis; s.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'es-ES'; u.rate = .9; s.speak(u);
-} catch(e){} };
+const say = t => {
+  try {
+    if (CLIPS[t]) { new Audio(CLIPS[t]).play().catch(()=>{}); return; }
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(t);
+      u.lang = 'es-ES'; u.rate = .9;
+      speechSynthesis.speak(u);
+    }
+  } catch(e){}
+};
 
 let ac, lastBlip = 0;
-const getAC = () => { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); ac.resume(); return ac; };
-const blip = f => { try {
-  const n = performance.now(); if (n - lastBlip < 140) return; lastBlip = n;
-  const a = getAC(), o = a.createOscillator(), g = a.createGain(), t = a.currentTime;
-  o.frequency.value = f; g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.07,t+.03); g.gain.exponentialRampToValueAtTime(.0001,t+.2);
-  o.connect(g).connect(a.destination); o.start(); o.stop(t+.22);
-} catch(e){} };
+const getAC = () => {
+  ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+  if (ac.state === 'suspended') ac.resume();
+  return ac;
+};
+const blip = f => {
+  try {
+    const n = performance.now(); if (n - lastBlip < 140) return; lastBlip = n;
+    const a = getAC(), o = a.createOscillator(), g = a.createGain(), t = a.currentTime;
+    o.frequency.value = f;
+    g.gain.setValueAtTime(.0001,t);
+    g.gain.exponentialRampToValueAtTime(.07,t+.03);
+    g.gain.exponentialRampToValueAtTime(.0001,t+.2);
+    o.connect(g).connect(a.destination);
+    o.start(); o.stop(t+.22);
+  } catch(e){}
+};
 
-/* Música de fondo con Web Audio: escala pentatónica, 100 bpm, progresión C–Am–F–G */
+/* Música suave */
 const M = {run:false, id:0, t:0, i:0, g:null};
 const mtof = m => 440 * Math.pow(2, (m-69)/12);
 const MEL  = [76,0,79,0,76,74,72,0,  81,0,79,76,0,72,0,0,  79,0,76,0,74,0,72,0,  74,0,76,79,0,76,74,0];
@@ -254,7 +278,7 @@ function tone(f, t, d, v, type) {
   g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(v,t+.03); g.gain.exponentialRampToValueAtTime(.0001,t+d);
   o.connect(g).connect(M.g); o.start(t); o.stop(t+d+.05);
 }
-function sched() {   // programa las notas con 0.5 s de antelación
+function sched() {
   const a = getAC();
   while (M.t < a.currentTime + .5) {
     const s = M.i % 32, bar = s >> 3, st = s & 7, m = MEL[s];
@@ -264,39 +288,55 @@ function sched() {   // programa las notas con 0.5 s de antelación
     M.t += .3; M.i++;
   }
 }
-function musicStart() { try {
-  if (M.run) return;
-  const a = getAC();
-  if (!M.g) { M.g = a.createGain(); M.g.connect(a.destination); }
-  M.g.gain.cancelScheduledValues(a.currentTime); M.g.gain.setValueAtTime(0,a.currentTime); M.g.gain.linearRampToValueAtTime(.6,a.currentTime+1.5);
-  M.t = a.currentTime + .1; M.run = true; M.id = setInterval(sched, 120); sched();
-} catch(e){} }
-function musicStop() { try {
-  if (!M.run) return;
-  M.run = false; clearInterval(M.id);
-  M.g.gain.cancelScheduledValues(ac.currentTime); M.g.gain.setTargetAtTime(0, ac.currentTime, .15);
-} catch(e){} }
-// El navegador exige un toque antes de reproducir audio: la música arranca con el primer toque
-document.addEventListener('pointerdown', () => { if (set.musica && !M.run && !document.hidden) musicStart(); }, true);
+function musicStart() {
+  try {
+    if (M.run) return;
+    const a = getAC();
+    if (!M.g) { M.g = a.createGain(); M.g.connect(a.destination); }
+    M.g.gain.cancelScheduledValues(a.currentTime);
+    M.g.gain.setValueAtTime(0,a.currentTime);
+    M.g.gain.linearRampToValueAtTime(.6,a.currentTime+1.5);
+    M.t = a.currentTime + .1; M.run = true; M.id = setInterval(sched, 120); sched();
+  } catch(e){}
+}
+function musicStop() {
+  try {
+    if (!M.run) return;
+    M.run = false; clearInterval(M.id);
+    M.g.gain.cancelScheduledValues(ac.currentTime);
+    M.g.gain.setTargetAtTime(0, ac.currentTime, .15);
+  } catch(e){}
+}
+document.addEventListener('pointerdown', () => { if (set.musica && !M.run && !document.hidden) musicStart(); }, {once:false, passive:true});
 document.addEventListener('visibilitychange', () => { if (document.hidden) musicStop(); else if (set.musica) musicStart(); });
 
 /* ---------- Estado y navegación ---------- */
 let cur, tool = 'fill', color = PAL[0][1], pid = null, last;
-const cv = {}, bgs = {};   // un canvas y un color de fondo por dibujo (avance en memoria durante la sesión)
+const cv = {}, bgs = {};
 const show = n => { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === n)); pid = null; };
 const ctxOf = () => cv[cur.id].getContext('2d');
 
-/* Pantalla inicial: toque en cualquier parte para entrar (también habilita el audio del navegador) */
+/* Pantalla inicial */
 const SC = ['#e53935','#fb8c00','#f9a825','#2e9e4f','#1e88e5','#8e24aa'];
-const word = (el, t) => [...t].forEach((c,i) => {
-  const s = document.createElement('span');
-  if (c === ' ') s.style.width = '.35em';
-  else { s.className = 'ch'; s.textContent = c; s.style.color = SC[i % SC.length]; s.style.animationDelay = (i*.12) + 's'; }
-  el.append(s);
-});
-word($('#sName'), 'ILIEL'); word($('#sSub'), 'VAMOS A PINTAR');
-$('#splash').onclick = () => { say('Iliel, vamos a pintar'); show('home'); };
+const buildLetters = (el, str) => {
+  [...str].forEach((c, i) => {
+    const s = document.createElement('span');
+    if (c === ' ') s.style.width = '.35em';
+    else { s.className = 'ch'; s.textContent = c; s.style.color = SC[i % SC.length]; }
+    el.append(s);
+  });
+};
+buildLetters($('#sName'), 'ILIEL');
+buildLetters($('#sSub'), 'VAMOS A PINTAR');
 
+const enterApp = () => {
+  show('home');
+  setTimeout(() => say('Iliel, vamos a pintar'), 120);
+};
+$('#sPlay').onclick = enterApp;
+$('#splash').onclick = e => { if (e.target.id !== 'sPlay') enterApp(); };
+
+/* Grid de dibujos */
 DR.forEach(d => {
   const b = document.createElement('button'); b.className = 'card'; b.innerHTML = outlineSVG(d);
   b.onclick = () => { say(d.name); openDrawing(d); };
@@ -307,7 +347,7 @@ function openDrawing(d) {
   cur = d; cur.P = cur.P || d.r.map(x => new Path2D(x));
   if (!cv[d.id]) {
     const c = document.createElement('canvas'); c.width = c.height = 800;
-    c.getContext('2d').setTransform(2,0,0,2,0,0);   // coordenadas en unidades del viewBox (400)
+    c.getContext('2d').setTransform(2,0,0,2,0,0);
     $('#stage').prepend(c); cv[d.id] = c; bgs[d.id] = '#fff';
   }
   Object.values(cv).forEach(c => c.hidden = c !== cv[d.id]);
@@ -315,18 +355,74 @@ function openDrawing(d) {
   $('#outline').innerHTML = outlineSVG(d);
   applyTools();
   show('paint');
+  initPaletteCarousel();
 }
 
-/* ---------- Paleta ---------- */
-PAL.forEach(([n,h],i) => {
-  const b = document.createElement('button'); b.className = 'sw' + (i ? '' : ' sel'); b.style.background = h;
-  b.onclick = () => { color = h; document.querySelectorAll('.sw').forEach(s => s.classList.toggle('sel', s === b)); say(n); };
-  $('#pal').append(b);
-});
+/* ---------- Paleta: Carrusel infinito continuo ---------- */
+const pal = $('#pal');
+const track = $('#palTrack');
+let setHeight = 0;
+
+function syncPaletteSelection() {
+  track.querySelectorAll('.sw').forEach(b => {
+    b.classList.toggle('sel', b.dataset.hex === color);
+  });
+}
+
+function buildPalette() {
+  track.innerHTML = '';
+  // Se renderizan 3 bloques idénticos (36 botones en total)
+  for (let cycle = 0; cycle < 3; cycle++) {
+    PAL.forEach(([n, h]) => {
+      const b = document.createElement('button');
+      b.className = 'sw' + (h === color ? ' sel' : '');
+      b.style.background = h;
+      b.dataset.hex = h;
+      b.dataset.name = n;
+
+      // Distinguir arrastre de toque:
+      let startY = 0, moved = false;
+      b.addEventListener('pointerdown', e => { startY = e.clientY; moved = false; }, {passive:true});
+      b.addEventListener('pointermove', e => {
+        if (Math.abs(e.clientY - startY) > 8) moved = true;
+      }, {passive:true});
+      b.addEventListener('pointerup', () => {
+        if (!moved) {
+          color = h;
+          syncPaletteSelection();
+          say(n);
+        }
+      });
+
+      track.append(b);
+    });
+  }
+}
+
+function initPaletteCarousel() {
+  if (!track.children.length) buildPalette();
+  requestAnimationFrame(() => {
+    // La altura de un bloque completo es 1/3 del total
+    setHeight = track.scrollHeight / 3;
+    if (setHeight > 0) {
+      pal.scrollTop = setHeight; // Posición neutra en el bloque central
+    }
+  });
+}
+
+// Bucle circular invisible al hacer scroll
+pal.addEventListener('scroll', () => {
+  if (setHeight <= 0) return;
+  if (pal.scrollTop < setHeight * 0.4) {
+    pal.scrollTop += setHeight;
+  } else if (pal.scrollTop > setHeight * 1.6) {
+    pal.scrollTop -= setHeight;
+  }
+}, {passive:true});
 
 /* ---------- Herramientas ---------- */
 function setTool(t) { tool = t; $('#tFill').classList.toggle('sel', t === 'fill'); $('#tBrush').classList.toggle('sel', t === 'brush'); }
-function applyTools() {   // muestra solo las herramientas habilitadas por el adulto
+function applyTools() {
   $('#tFill').hidden = !set.balde; $('#tBrush').hidden = !set.brocha;
   if (tool === 'fill' && !set.balde) setTool('brush');
   else if (tool === 'brush' && !set.brocha) setTool('fill');
@@ -338,23 +434,23 @@ $('#bHome').onclick = () => show('home');
 
 function fill(p) {
   const x = ctxOf();
-  for (let i = cur.P.length; i--;) {            // la región superior tiene prioridad
-    if (x.isPointInPath(cur.P[i], p[0]*2, p[1]*2, 'evenodd')) {   // el punto va en píxeles del canvas
+  for (let i = cur.P.length; i--;) {
+    if (x.isPointInPath(cur.P[i], p[0]*2, p[1]*2, 'evenodd')) {
       x.save(); x.clip(cur.P[i], 'evenodd'); x.shadowBlur = 0; x.fillStyle = color; x.fillRect(0,0,400,400); x.restore();
       blip(440); return;
     }
   }
-  if (set.modo === 'marco') { bgs[cur.id] = color; $('#stage').style.background = color; blip(380); }   // fuera del dibujo: pinta el fondo
+  if (set.modo === 'marco') { bgs[cur.id] = color; $('#stage').style.background = color; blip(380); }
 }
 function seg(a, b) {
   const x = ctxOf();
   x.lineWidth = 30; x.lineCap = x.lineJoin = 'round'; x.strokeStyle = x.shadowColor = color; x.shadowBlur = 6;
   const stroke = () => { x.beginPath(); x.moveTo(a[0],a[1]); x.lineTo(b[0],b[1]); x.stroke(); };
-  if (set.modo === 'marco') { stroke(); return; }                 // todo el marco
-  cur.P.forEach(p => { x.save(); x.clip(p, 'evenodd'); stroke(); x.restore(); });   // solo dentro de la silueta
+  if (set.modo === 'marco') { stroke(); return; }
+  cur.P.forEach(p => { x.save(); x.clip(p, 'evenodd'); stroke(); x.restore(); });
 }
 
-/* ---------- Pointer events: un solo puntero activo, ignora palma ---------- */
+/* ---------- Pointer events en lienzo ---------- */
 const stage = $('#stage');
 const xy = e => { const r = stage.getBoundingClientRect(); return [(e.clientX-r.left)/r.width*400, (e.clientY-r.top)/r.height*400]; };
 stage.addEventListener('pointerdown', e => {
@@ -379,14 +475,14 @@ $('#bCam').onclick = () => {
   const o = document.createElement('canvas'); o.width = o.height = 800;
   const x = o.getContext('2d'); x.fillStyle = bgs[cur.id]; x.fillRect(0,0,800,800); x.drawImage(cv[cur.id],0,0);
   const im = new Image();
-  im.onload = () => {   // los contornos se dibujan encima del color
+  im.onload = () => {
     x.drawImage(im,0,0,800,800);
     o.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = cur.id + '.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); });
   };
   im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(outlineSVG(cur).replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" '));
 };
 
-/* ---------- Candado: mantener 3 s abre el panel parental ---------- */
+/* ---------- Candado 3 s ---------- */
 const lk = $('#lock'); let lt;
 const endHold = () => { clearTimeout(lt); lk.classList.remove('hold'); };
 lk.addEventListener('pointerdown', () => { lk.classList.add('hold'); lt = setTimeout(() => { endHold(); refreshPanel(); show('parent'); }, 3000); });
@@ -399,7 +495,7 @@ function refreshPanel() {
 }
 document.querySelectorAll('.opt[data-k]').forEach(b => b.onclick = () => {
   const k = b.dataset.k;
-  if ((k === 'balde' || k === 'brocha') && set[k] && !set[k === 'balde' ? 'brocha' : 'balde']) return;   // debe quedar al menos una herramienta
+  if ((k === 'balde' || k === 'brocha') && set[k] && !set[k === 'balde' ? 'brocha' : 'balde']) return;
   set[k] = !set[k];
   if (k === 'musica') set.musica ? musicStart() : musicStop();
   saveSet(); refreshPanel(); applyTools();
@@ -407,13 +503,17 @@ document.querySelectorAll('.opt[data-k]').forEach(b => b.onclick = () => {
 document.querySelectorAll('.opt[data-m]').forEach(b => b.onclick = () => { set.modo = b.dataset.m; saveSet(); refreshPanel(); });
 $('#pBack').onclick = () => show('home');
 
-/* ---------- Bloqueos del navegador ---------- */
+/* Bloqueos del navegador */
 ['contextmenu','selectstart','gesturestart','gesturechange','dblclick','dragstart'].forEach(n => document.addEventListener(n, e => e.preventDefault()));
 document.addEventListener('wheel', e => { if (e.ctrlKey) e.preventDefault(); }, {passive:false});
 applyTools();
 
-/* ---------- PWA: service worker para funcionar sin conexión ---------- */
-if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+/* Registro PWA */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
