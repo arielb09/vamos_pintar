@@ -1,4 +1,4 @@
-const CACHE = 'pintar-v6';
+const CACHE = 'pintar-v7';
 
 const ASSETS = [
   './',
