@@ -23,8 +23,15 @@
 
   function initialSVG(d, index) {
     // Colores solo en el menú; no se dibujan en el lienzo.
-    const regions = d.r.map((path, i) =>
-      `<path d="${escaped(path)}" fill="${colors[(i + index) % colors.length]}" fill-rule="evenodd"/>`).join('');
+    // Colores por región de la manzana: cuerpo rojo, hoja verde, tallo marrón.
+    // El orden debe coincidir con las regiones d.r del dibujo.
+    const appleColors = ['#e53935', '#9ccc65', '#795548'];
+    const isApple = /manzana|apple/i.test(`${d.id} ${d.name}`);
+    const regions = d.r.map((path, i) => {
+      const color = isApple ? (appleColors[i] || '#e53935')
+        : colors[(i + index) % colors.length];
+      return `<path d="${escaped(path)}" fill="${color}" fill-rule="evenodd"/>`;
+    }).join('');
     const outlines = d.r.map(path => `<path d="${escaped(path)}"/>`).join('');
     return `<svg viewBox="0 0 400 400"><g>${regions}</g><g fill="none" stroke="#2f3a40" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">${outlines}</g></svg>`;
   }
@@ -48,13 +55,24 @@
     x.drawImage(cv[d.id], 0, 0, 200, 200);
     const image = small.toDataURL('image/png');
     if (previews.get(d.id) !== image) {
-      const svg = new DOMParser().parseFromString(outlineSVG(d), 'image/svg+xml').documentElement;
+      // El parser HTML crea correctamente el namespace SVG.
+      // Conservamos los contornos originales y colocamos la pintura debajo.
+      const holder = document.createElement('div');
+      holder.innerHTML = outlineSVG(d);
+      const svg = holder.querySelector('svg');
+      if (!svg) {
+        console.error('Progreso v5: outlineSVG no devolvió un SVG', d.id);
+        return;
+      }
+      svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      svg.setAttribute('viewBox', '0 0 400 400');
       const layer = document.createElementNS('http://www.w3.org/2000/svg', 'image');
       layer.setAttribute('href', image);
+      layer.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', image);
       layer.setAttribute('width', '400');
       layer.setAttribute('height', '400');
       svg.insertBefore(layer, svg.firstChild);
-      entry.card.replaceChildren(document.importNode(svg, true));
+      entry.card.replaceChildren(svg);
       previews.set(d.id, image);
     }
     pending.delete(d.id);
