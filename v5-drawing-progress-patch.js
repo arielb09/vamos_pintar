@@ -1,7 +1,7 @@
-/* Vamos a Pintar — etapa 1: miniaturas y progreso en sesión.
+/* Vamos a Pintar — etapa 2: progreso offline en IndexedDB.
  * Cargar DESPUÉS de v3-camera-gallery-patch.js.
- * Depende de los identificadores del index.html adjunto.
- * No guarda en IndexedDB; al recargar se pierde el avance.
+ * Base independiente de Mis creaciones. Guarda PNG original y fondo.
+ * No modifica PAL ni el carrusel. Los IDs de DR deben ser estables.
  */
 (() => {
   'use strict';
@@ -18,6 +18,97 @@
   const cards = new Map();
   const pending = new Set();
   const previews = new Map();
+  const touched = new Set();
+  const timers = new Map();
+  let queue = Promise.resolve();
+  const database = new Promise((resolve, reject) => {
+    const request = indexedDB.open('vamos-pintar-progress-v5', 1);
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore('progress', {keyPath: 'id'});
+    };
+    request.onsuccess = () => {
+      request.result.onversionchange = () => request.result.close();
+      resolve(request.result);
+    };
+    request.onerror = () => reject(request.error);
+    request.onblocked = () => console.warn('Progreso: cerrar otras pestañas de la app.');
+  });
+  database.catch(error => console.warn('Progreso offline no disponible:', error));
+
+  function write(record, id) {
+    queue = queue.then(async () => {
+      const db = await database;
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction('progress', 'readwrite');
+        const store = tx.objectStore('progress');
+        if (record) store.put(record); else store.delete(id);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+      });
+    }).catch(error => console.warn('No se pudo guardar el progreso:', error));
+  }
+
+  function snapshot(d) {
+    clearTimeout(timers.get(d.id));
+    timers.delete(d.id);
+    if (!cv[d.id] || !pending.has(d.id)) return;
+    // Captura inmediata: un borrado posterior no altera este snapshot.
+    write({id: d.id, png: cv[d.id].toDataURL('image/png'),
+      background: bgs[d.id] || '#fff', updated: Date.now()}, d.id);
+    refresh(d);
+  }
+
+  function changed(d) {
+    if (!d) return;
+    touched.add(d.id);
+    pending.add(d.id);
+    clearTimeout(timers.get(d.id));
+    timers.set(d.id, setTimeout(() => snapshot(d), 800));
+  }
+
+  async function restore() {
+    try {
+      const db = await database;
+      const records = await new Promise((resolve, reject) => {
+        const tx = db.transaction('progress', 'readonly');
+        const request = tx.objectStore('progress').getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      await Promise.all(records.map(async record => {
+        const d = DR.find(item => item.id === record.id);
+        if (!d || touched.has(d.id)) return;
+        const image = new Image();
+        await new Promise((resolve, reject) => {
+          image.onload = resolve;
+          image.onerror = reject;
+          image.src = record.png;
+        });
+        if (touched.has(d.id)) return;
+        // Un dibujo nunca abierto recibe su canvas al abrirlo normalmente.
+        const existing = cv[d.id];
+        const canvas = existing || document.createElement('canvas');
+        if (!existing) {
+          canvas.width = image.naturalWidth;
+          canvas.height = image.naturalHeight;
+          cv[d.id] = canvas;
+        }
+        const x = canvas.getContext('2d');
+        x.save();
+        x.setTransform(1, 0, 0, 1, 0, 0);
+        x.clearRect(0, 0, canvas.width, canvas.height);
+        x.drawImage(image, 0, 0, canvas.width, canvas.height);
+        x.restore();
+        bgs[d.id] = record.background || '#fff';
+        if (cur && cur.id === d.id) stage.style.background = bgs[d.id];
+        pending.add(d.id);
+        refresh(d);
+      }));
+    } catch (error) {
+      console.warn('No se pudo recuperar el progreso:', error);
+    }
+  }
   const escaped = value => String(value).replace(/[&<>"']/g, ch =>
     ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[ch]));
 
@@ -86,18 +177,18 @@
     const x = ctxOf();
     const hit = d.P.some(path => x.isPointInPath(path, p[0]*2, p[1]*2, 'evenodd'));
     originalFill(p);
-    if (hit || set.modo === 'marco') pending.add(d.id);
+    if (hit || set.modo === 'marco') changed(d);
   };
   const originalSeg = seg;
   seg = function(a, b) {
     originalSeg(a, b);
-    if (cur) pending.add(cur.id);
+    if (cur) changed(cur);
   };
 
   // Detecta navegación sin sustituir show ni tocar los controles de la galería.
   new MutationObserver(() => {
     if (!paint.classList.contains('on')) {
-      DR.forEach(d => refresh(d));
+      DR.forEach(d => snapshot(d));
     }
   }).observe(paint, {attributes: true, attributeFilter: ['class']});
 
@@ -114,8 +205,12 @@
     x.restore();
     bgs[d.id] = '#fff';
     stage.style.background = '#fff';
+    touched.add(d.id);
+    clearTimeout(timers.get(d.id));
+    timers.delete(d.id);
     pending.delete(d.id);
     previews.delete(d.id);
+    write(null, d.id);
     const entry = cards.get(d.id);
     if (entry) entry.card.innerHTML = entry.initial;
     stage.animate([
@@ -125,8 +220,16 @@
     ], {duration:360, easing:'ease-in-out'});
   };
 
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) DR.forEach(d => refresh(d));
+  // Guardar también al terminar cada gesto reduce el riesgo de cierre abrupto.
+  window.addEventListener('pointerup', () => {
+    if (cur) snapshot(cur);
   });
-  window.addEventListener('pagehide', () => DR.forEach(d => refresh(d)));
+  window.addEventListener('pointercancel', () => {
+    if (cur) snapshot(cur);
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) DR.forEach(d => snapshot(d));
+  });
+  window.addEventListener('pagehide', () => DR.forEach(d => snapshot(d)));
+  restore();
 })();
