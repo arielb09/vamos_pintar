@@ -167,11 +167,24 @@ const DR = [
 ];
 const outlineSVG = d => `<svg viewBox="0 0 400 400"><g fill="none" stroke="#2f3a40" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">${d.r.map(x => `<path d="${x}"/>`).join('')}</g></svg>`;
 
-/* 12 colores */
+/* 16 colores */
 const PAL = [
-  ['rojo','#e53935'],['naranja','#fb8c00'],['amarillo','#fdd835'],['verde claro','#9ccc65'],
-  ['verde','#2e9e4f'],['celeste','#4fc3f7'],['azul','#1e88e5'],['morado','#8e24aa'],
-  ['rosa','#f06292'],['café','#8d5a3b'],['gris','#9e9e9e'],['negro','#263238']
+  ['rojo', '#e53935'],
+  ['naranja', '#fb8c00'],
+  ['amarillo', '#fdd835'],
+  ['verde claro', '#9ccc65'],
+  ['verde', '#2e9e4f'],
+  ['celeste', '#4fc3f7'],
+  ['azul', '#1e88e5'],
+  ['morado', '#8e24aa'],
+  ['rosa', '#f06292'],
+  ['café', '#8d5a3b'],
+  ['gris', '#9e9e9e'],
+  ['negro', '#263238'],
+  ['blanco', '#ffffff'],
+  ['turquesa', '#26c6da'],
+  ['violeta', '#ab47bc'],
+  ['dorado', '#ffca28']
 ];
 
 /* ---------- Audio y voz ---------- */
@@ -267,7 +280,7 @@ const buildLetters = (el, str) => {
   });
 };
 buildLetters($('#sName'), 'ILIEL');
-buildLetters($('#sSub'), 'VAMOS A PINTAR');
+buildLetters($('#sSub'), 'VAMOS A PINTAR - V10');
 
 const enterApp = () => {
   show('home');
