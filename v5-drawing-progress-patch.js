@@ -1,124 +1,114 @@
-/* Añadir DESPUÉS de v3-camera-gallery-patch.js, antes de </body>. */
-(function () {
+/* Vamos a Pintar — etapa 1: miniaturas y progreso en sesión.
+ * Cargar DESPUÉS de v3-camera-gallery-patch.js.
+ * Depende de los identificadores del index.html adjunto.
+ * No guarda en IndexedDB; al recargar se pierde el avance.
+ */
+(() => {
   'use strict';
-  // Base independiente: no cambia la versión ni los registros de la galería.
+  if (window.__drawingProgressV5) return;
+  const grid = document.querySelector('#grid');
+  const paint = document.querySelector('#paint');
+  if (!grid || !paint || typeof DR === 'undefined') {
+    console.error('Progreso v5: cargar después del script principal.');
+    return;
+  }
+  window.__drawingProgressV5 = true;
+  const colors = ['#fdd835','#4fc3f7','#f06292','#9ccc65',
+    '#fb8c00','#8e24aa','#e53935','#1e88e5'];
   const cards = new Map();
-  const records = new Map();
-  const dirty = new Set();
-  let queue = Promise.resolve(), timer, opening = 0;
-  const dbPromise = new Promise((resolve, reject) => {
-    const request = indexedDB.open('vamos-pintar-progress', 1);
-    request.onupgradeneeded = () => request.result.createObjectStore('progress', {keyPath:'id'});
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+  const pending = new Set();
+  const previews = new Map();
+  const escaped = value => String(value).replace(/[&<>"']/g, ch =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[ch]));
+
+  function initialSVG(d, index) {
+    // Colores solo en el menú; no se dibujan en el lienzo.
+    const regions = d.r.map((path, i) =>
+      `<path d="${escaped(path)}" fill="${colors[(i + index) % colors.length]}" fill-rule="evenodd"/>`).join('');
+    const outlines = d.r.map(path => `<path d="${escaped(path)}"/>`).join('');
+    return `<svg viewBox="0 0 400 400"><g>${regions}</g><g fill="none" stroke="#2f3a40" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">${outlines}</g></svg>`;
+  }
+
+  Array.from(grid.querySelectorAll('.card')).slice(0, DR.length).forEach((card, i) => {
+    const d = DR[i];
+    const initial = initialSVG(d, i);
+    cards.set(d.id, {card, initial});
+    card.innerHTML = initial;
   });
-  async function transaction(mode, operation) {
-    const db = await dbPromise;
-    return new Promise((resolve, reject) => {
-      const t = db.transaction('progress', mode);
-      const request = operation(t.objectStore('progress'));
-      t.oncomplete = () => resolve(request.result);
-      t.onerror = () => reject(t.error);
-      t.onabort = () => reject(t.error);
-    });
-  }
-  function initialThumbnail(d) {
-    const colors = ['#fdd835','#4fc3f7','#f06292','#9ccc65','#fb8c00','#8e24aa','#e53935','#1e88e5'];
-    return `<svg viewBox="0 0 400 400" aria-hidden="true"><g stroke="#2f3a40" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">${d.r.map((path,i) => `<path d="${path}" fill="${colors[i % colors.length]}" fill-rule="evenodd"/>`).join('')}</g></svg>`;
-  }
-  function updateThumbnail(d) {
-    const card = cards.get(d.id);
-    if (!card) return;
-    if (!records.has(d.id)) { card.innerHTML = initialThumbnail(d); return; }
-    const small = document.createElement('canvas'); small.width = small.height = 200;
+
+  function refresh(d) {
+    if (!d || !pending.has(d.id) || !cv[d.id]) return;
+    const entry = cards.get(d.id);
+    if (!entry) return;
+    const small = document.createElement('canvas');
+    small.width = small.height = 200;
     const x = small.getContext('2d');
-    x.fillStyle = bgs[d.id] || '#fff'; x.fillRect(0,0,200,200);
-    x.drawImage(cv[d.id],0,0,200,200);
-    const svg = outlineSVG(d);
-    card.innerHTML = svg.replace('<g ', `<image href="${small.toDataURL('image/png')}" width="400" height="400"/><g `);
-  }
-  DR.forEach((d,i) => {
-    const card = $('#grid').children[i];
-    if (card) { cards.set(d.id,card); card.innerHTML = initialThumbnail(d); }
-  });
-  function makeCanvas(id) {
-    if (cv[id]) return cv[id];
-    const c = document.createElement('canvas'); c.width = c.height = 800;
-    c.getContext('2d').setTransform(2,0,0,2,0,0);
-    c.hidden = true; $('#stage').prepend(c); cv[id] = c; bgs[id] = '#fff';
-    return c;
-  }
-  const ready = (async () => {
-    try {
-      const all = await transaction('readonly', s => s.getAll());
-      await Promise.all(all.map(async record => {
-        const d = DR.find(item => item.id === record.id);
-        if (!d || !record.image) return;
-        const url = URL.createObjectURL(record.image);
-        try {
-          const image = new Image();
-          await new Promise((resolve,reject) => { image.onload=resolve; image.onerror=reject; image.src=url; });
-          const c = makeCanvas(d.id), x = c.getContext('2d');
-          x.save(); x.setTransform(1,0,0,1,0,0); x.drawImage(image,0,0,800,800); x.restore();
-          bgs[d.id] = record.background || '#fff'; records.set(d.id,record); updateThumbnail(d);
-        } finally { URL.revokeObjectURL(url); }
-      }));
-    } catch (error) { console.warn('No se pudo recuperar el progreso local.',error); }
-  })();
-  const originalOpen = openDrawing;
-  openDrawing = async function(d) {
-    const token = ++opening;
-    await ready;
-    if (token === opening) originalOpen(d);
-  };
-  function persist(d) {
-    if (!d || !cv[d.id] || !dirty.has(d.id)) return;
-    dirty.delete(d.id);
-    // Captura síncrona: el guardado no cambia aunque el niño siga pintando.
-    const snapshot = document.createElement('canvas'); snapshot.width = snapshot.height = 800;
-    snapshot.getContext('2d').drawImage(cv[d.id],0,0);
-    const background = bgs[d.id] || '#fff';
-    const pixels = snapshot.getContext('2d').getImageData(0,0,800,800).data;
-    let hasPaint = background !== '#fff';
-    for (let i=3; !hasPaint && i<pixels.length; i+=4) hasPaint = pixels[i] !== 0;
-    if (!hasPaint) {
-      records.delete(d.id); updateThumbnail(d);
-      queue = queue.then(() => transaction('readwrite',s => s.delete(d.id))).catch(error => console.warn('No se pudo borrar el progreso.',error));
-      return;
+    x.fillStyle = bgs[d.id] || '#fff';
+    x.fillRect(0, 0, 200, 200);
+    x.drawImage(cv[d.id], 0, 0, 200, 200);
+    const image = small.toDataURL('image/png');
+    if (previews.get(d.id) !== image) {
+      const svg = new DOMParser().parseFromString(outlineSVG(d), 'image/svg+xml').documentElement;
+      const layer = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+      layer.setAttribute('href', image);
+      layer.setAttribute('width', '400');
+      layer.setAttribute('height', '400');
+      svg.insertBefore(layer, svg.firstChild);
+      entry.card.replaceChildren(document.importNode(svg, true));
+      previews.set(d.id, image);
     }
-    records.set(d.id,{id:d.id}); updateThumbnail(d);
-    const blob = new Promise(resolve => snapshot.toBlob(resolve,'image/png'));
-    queue = queue.then(async () => {
-      const image = await blob;
-      if (image) await transaction('readwrite',s => s.put({id:d.id,image,background,updated:Date.now()}));
-    }).catch(error => console.warn('No se pudo guardar el progreso.',error));
+    pending.delete(d.id);
   }
-  function scheduleSave() {
-    clearTimeout(timer);
+
+  // Conserva los lienzos existentes: openDrawing ya recupera el avance en sesión.
+  // Solo marca cambios que pueden dejar pintura dentro del área permitida.
+  const originalFill = fill;
+  fill = function(p) {
     const d = cur;
-    timer = setTimeout(() => persist(d),700);
-  }
-  stage.addEventListener('pointerdown',e => {
-    if (cur && e.pointerId === pid) dirty.add(cur.id);
-  });
-  stage.addEventListener('pointermove',e => {
-    if (cur && tool === 'brush' && e.pointerId === pid) dirty.add(cur.id);
-  });
-  ['pointerup','pointercancel'].forEach(name => stage.addEventListener(name,scheduleSave));
-  // Captura antes de los onclick existentes: incluye volver, candado y cámara.
-  ['bHome','lock','bCam'].forEach(id => {
-    const button = document.getElementById(id);
-    if (button) button.addEventListener('pointerdown',() => persist(cur),true);
-  });
-  $('#bHome').addEventListener('click',() => persist(cur),true);
-  $('#bTrash').addEventListener('click',() => {
+    const x = ctxOf();
+    const hit = d.P.some(path => x.isPointInPath(path, p[0]*2, p[1]*2, 'evenodd'));
+    originalFill(p);
+    if (hit || set.modo === 'marco') pending.add(d.id);
+  };
+  const originalSeg = seg;
+  seg = function(a, b) {
+    originalSeg(a, b);
+    if (cur) pending.add(cur.id);
+  };
+
+  // Detecta navegación sin sustituir show ni tocar los controles de la galería.
+  new MutationObserver(() => {
+    if (!paint.classList.contains('on')) {
+      DR.forEach(d => refresh(d));
+    }
+  }).observe(paint, {attributes: true, attributeFilter: ['class']});
+
+  // Captura el dibujo al pulsar: un cambio de pantalla durante los 180 ms
+  // de animación no debe borrar por accidente otro dibujo.
+  document.querySelector('#bTrash').onclick = () => {
     const d = cur;
-    clearTimeout(timer);
-    // El borrado original se ejecuta a los 180 ms.
-    setTimeout(() => { if (d) { dirty.add(d.id); persist(d); } },230);
+    if (!d || !cv[d.id]) return;
+    const canvas = cv[d.id];
+    const x = canvas.getContext('2d');
+    x.save();
+    x.setTransform(1, 0, 0, 1, 0, 0);
+    x.clearRect(0, 0, canvas.width, canvas.height);
+    x.restore();
+    bgs[d.id] = '#fff';
+    stage.style.background = '#fff';
+    pending.delete(d.id);
+    previews.delete(d.id);
+    const entry = cards.get(d.id);
+    if (entry) entry.card.innerHTML = entry.initial;
+    stage.animate([
+      {opacity:1, transform:'scale(1)'},
+      {opacity:.2, transform:'scale(.96)'},
+      {opacity:1, transform:'scale(1)'}
+    ], {duration:360, easing:'ease-in-out'});
+  };
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) DR.forEach(d => refresh(d));
   });
-  document.addEventListener('visibilitychange',() => {
-    if (document.hidden) persist(cur);
-  });
-  window.addEventListener('pagehide',() => persist(cur));
+  window.addEventListener('pagehide', () => DR.forEach(d => refresh(d)));
 })();
